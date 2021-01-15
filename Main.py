@@ -6,20 +6,16 @@ from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
 import pandas as pd
 import copy
 from os import path
-import firebase_admin
-from firebase_admin import credentials
+import math
+ 
 from ui import Ui_MainWindow, Ui_SecondPage, Ui_PreReq
-
+ 
 ACB_BACKLOG_LIST = 'ACBBACKLOG.xls'
 PENDING_COURSE_LIST = 'Pending Courses.xls'
 PREREQ_LIST = 'Pre-requisite.xlsx'
 TIME_TABLE = 'TIMETABLE.xls'
 PENDING_BACKLOG = "Pending Backlog.xls"      #delete this after changing Pending Courses.xls or ACBBACKLOG.xls
-KEY='arc-test-b3eb1-firebase-adminsdk-yugcl-a4c9eb9495.json'
-cred = credentials.Certificate(KEY)
-firebase_admin.initialize_app(cred)
-
-
+ 
 main_win = None
 prereqWindow = None
 student_id = None
@@ -27,8 +23,8 @@ student_name = None
 courseDict = {}
 studentIDS = []
 electives = []
-
-
+ 
+ 
 class MainWindow:
     def __init__(self, studentIDS):
         global prereq
@@ -42,10 +38,10 @@ class MainWindow:
         self.ui.pushButton.clicked.connect(self.pushButton_click)
         prereq_file = pd.read_excel(PREREQ_LIST, skiprows=1)
         self.formPrereq()
-
+ 
     def show(self):
         self.main_win.show()
-
+ 
     def pushButton_click(self):
         global student_id
         student_id = self.ui.listWidget.currentItem().text().split('-')[1]
@@ -54,14 +50,14 @@ class MainWindow:
         global main_win
         main_win = SecondPage()
         main_win.show()
-
+ 
     def formPrereq(self):
         prereq_file = pd.read_excel(PREREQ_LIST, skiprows=1)
         or_and = ""
         for i in range(len(prereq_file['Subject'])):
             course1 = prereq_file['Subject'][i].strip(
             ) + prereq_file['Catalog'][i].strip()
-
+ 
             if str(prereq_file['preq1 subject'][i]) == 'nan':
                 continue
             l = prereq_file['preq1 subject'][i].strip(
@@ -82,7 +78,7 @@ class MainWindow:
             else:
                 isPrereqFor[l].append(course1)
 #######################################################################
-
+ 
             if str(prereq_file['preq3 no'][i]) == 'nan':
                 continue
             l = prereq_file['preq3 no'][i].strip(
@@ -93,7 +89,7 @@ class MainWindow:
             else:
                 isPrereqFor[l].append(course1)
 #######################################################################
-
+ 
             if str(prereq_file['preq4 no'][i]) == 'nan':
                 continue
             l = prereq_file['preq4 no'][i].strip(
@@ -103,9 +99,9 @@ class MainWindow:
                 isPrereqFor[l] = [course1]
             else:
                 isPrereqFor[l].append(course1)
-
+ 
 class SecondPage:
-
+ 
     def __init__(self):
         self.main_win = QMainWindow()
         self.ui = Ui_SecondPage()
@@ -114,7 +110,7 @@ class SecondPage:
         if student_id not in courseDict:
             courseDict[student_id] = ["No pending courses"]
         timetable = pd.read_excel(TIME_TABLE)
-
+ 
         global courseDictWithoutName
         courseDictWithoutName = []  # {CSF241,EEEF241}
         global courseToSections  # {CSF241: ["M-2","W-2"]}
@@ -130,10 +126,10 @@ class SecondPage:
         courseToSections = {}
         for i in courseDict[student_id]:
             courseDictWithoutName.append(i.split('-')[0])  # csf221
-
+ 
         self.ui.listWidget_1.addItems(courseDict[student_id])
         electives += courseDictWithoutName
-
+ 
         for i in range(len(timetable['Course ID'])):
             subject = timetable['Subject'][i]
             catalog = timetable['Catalog'][i].strip()
@@ -141,21 +137,21 @@ class SecondPage:
             if (subject + catalog) not in electives:
                 electives.append(subject + catalog)
                 self.ui.listWidget_1.addItems([subject + catalog + "-" + title])
-
-
-
+ 
+ 
+ 
         self.ui.label_2.setText(student_name + " (" + student_id +")")
-
+ 
         for i in electives:
             count[i] = 0
-
+ 
         # timetable = pd.read_excel('sem 2 15-16tt-24 FEB 16.xlsx', skiprows=2)
         # for i in range(len(timetable['DAYS'])):
         # 	c = timetable['COURSENO'][i].split()[0]+timetable['COURSENO'][i].split()[1]
         # 	if c in courseDictWithoutName:
         # 		key = c+'-'+str(timetable['STAT'][i])+str(timetable['SEC'][i])
         # 		courseToSections[key] = timetable['DAYS'][i].split()
-
+ 
         for i in range(len(timetable['Exam Tm Cd'])):
             c = timetable['Subject'][i] + timetable['Catalog'][i].strip()
             if c in exam or str(timetable['Exam Tm Cd'][i]) == 'nan':
@@ -166,7 +162,7 @@ class SecondPage:
         for i in range(len(timetable['Course ID'])):
             c = timetable['Subject'][i] + timetable['Catalog'][i].strip() + '-' + timetable['Section'][i].strip()
             self.sectionToClassnbr[c] = timetable['Class Nbr'][i]
-
+ 
         for i in range(len(timetable['Course ID'])):
             c = timetable['Subject'][i] + timetable['Catalog'][i].strip()
             if c in electives:
@@ -182,7 +178,7 @@ class SecondPage:
                 # print(l)
                 for el in l:
                     courseToSections[key].add(el)
-
+ 
         # print(courseToSections)
         courseToSectionsNotSelected = copy.copy(courseToSections)
         self.ui.pushButton_back.clicked.connect(self.pushButton_click)
@@ -191,19 +187,19 @@ class SecondPage:
         self.ui.listWidget_2.itemClicked.connect(self.sectionClickRemove)
         self.ui.pushButton1.clicked.connect(self.showPrereq)
         self.ui.pushButton.clicked.connect(self.validate)
-
+ 
         global days, tableWidgetMap
         tableWidgetMap = {}
         days = {'M': 0, 'T': 1, 'W': 2, 'TH': 3, 'F': 4, 'S': 5}
-
+ 
         if path.exists("stu_op#" + student_id + ".xls"):
             self.getXLS()
-
+ 
     def getXLS(self):
         self.setToValidate();
         self.ui.listWidgetErrors.clear()
         oldXLS = pd.read_excel("stu_op#" + student_id + ".xls")
-
+ 
         for i in range(len(oldXLS)):
             section = oldXLS["Section"][i]
             c = section.split('-')[0]
@@ -219,29 +215,10 @@ class SecondPage:
                 else:
                     tableWidgetMap[day, slot - 1].append(section)
         self.formTable()
-
+ 
     def setToValidate(self):
         self.ui.pushButton.setText("Validate")
         
-    def firebase(pathh):
-
-        
-
-        
-
-        client=storage.Client()
-        bucket=client.get_bucket('arc-test-b3eb1.appspot.com')
-
-        url=[]
-        onlyfiles = [f for f in listdir("./") if isfile(join("./", f))]
-        onlyfiles = [f for f in onlyfiles if f[:4]=='stu_']
-        for f in onlyfiles:
-            imageBlob=bucket.blob(pathh)
-            imageBlob.upload_from_filename("./"+pathh)
-            url.append(imageBlob.generate_signed_url(expiration=timedelta(500)))
-        print(url)
-        return url
-
     def validate(self):
         if self.ui.pushButton.text() == "Validate":
             l1 = self.checkExamClash()
@@ -257,18 +234,17 @@ class SecondPage:
                 self.ui.pushButton.setText("Save")
         else:
             self.ui.listWidgetErrors.clear()
-
+ 
             op = pd.DataFrame(columns=['StudentID', 'StudentName', 'Section', 'ClassNbr'])
             for i in range(self.ui.listWidget_2.count()):
                 courseSection = self.ui.listWidget_2.item(i).text()
                 op.loc[i] = [student_id, student_name, courseSection, self.sectionToClassnbr[courseSection]]
             
             op.to_excel("stu_op#" + student_id + ".xls", index = False)
-            firebase("stu_op#" + student_id + ".xls")
             self.ui.listWidgetErrors.addItems(["Saved Successfully !!"])
-
+ 
     # def generateOutput(self):
-
+ 
     def getDays(self, days):
         res = []
         for i in days:
@@ -277,7 +253,7 @@ class SecondPage:
                 res.pop()
                 res[-1] += 'H'
         return res
-
+ 
     def giveTime(self, a, b, c):
         l = []
         s = int(str(a)[0:2]) - 7
@@ -288,17 +264,17 @@ class SecondPage:
         for i in range(s, e):
             for j in d:
                 l.append(j + '-' + str(i))
-
+ 
         return l
-
+ 
     def show(self):
         self.main_win.show()
-
+ 
     def pushButton_click(self):
         global main_win
         main_win = MainWindow(studentIDS)
         main_win.show()
-
+ 
     def courseClick(self, item):
         course = self.ui.listWidget_1.currentItem().text().split('-')[0]
         self.ui.listWidget.clear()
@@ -309,10 +285,10 @@ class SecondPage:
                 self.ui.listWidget.addItems([i])
         if f == False and count[course] == 0:
             self.ui.listWidget.addItems(["Course not offered this sem"])
-
+ 
     def formTable(self):
         self.tableSlotClash = 0
-
+ 
         for i in range(6):
             for j in range(11):
                 if (i, j) not in tableWidgetMap:
@@ -326,7 +302,7 @@ class SecondPage:
                             i, j).setBackground(
                             QtGui.QColor(
                                 255, 255, 0))
-
+ 
     def sectionClickAdd(self, item):
         self.setToValidate();
         self.ui.listWidgetErrors.clear()
@@ -347,7 +323,7 @@ class SecondPage:
             else:
                 tableWidgetMap[day, slot - 1].append(section)
         self.formTable()
-
+ 
     def sectionClickRemove(self, item):
         self.setToValidate();
         self.ui.listWidgetErrors.clear()
@@ -361,13 +337,13 @@ class SecondPage:
             day = int(days[s.split('-')[0]])
             slot = int(s.split('-')[1])
             tableWidgetMap[day, slot - 1].remove(section)
-
+ 
         if self.ui.listWidget_1.currentItem().text().split(
                 '-')[0] == section.split('-')[0]:
             self.ui.listWidget.addItems([section])
-
+ 
         self.formTable()
-
+ 
     # def pushButton_prereq(self):
     #     course = self.ui.listWidget_1.currentItem().text().split('-')[0]
     #     # print(course)
@@ -381,7 +357,7 @@ class SecondPage:
     #         if course == course1:
     #             l = prereq_file['preq1 subject'][i] + \
     # prereq_file['preq1 catalog'][i] + prereq_file['pereq1 title '][i]
-
+ 
     def checkExamClash(self):
         l = []
         for i in electives:
@@ -395,7 +371,7 @@ class SecondPage:
                         self.ui.listWidgetErrors.addItems(["Warning: exam dates for {} not in Timetable. Skipping exam clash for this course".format(i)])
                         break
         return l
-
+ 
     def checkPrereqClash(self):
         l = []
         for i in courseDictWithoutName:
@@ -405,18 +381,18 @@ class SecondPage:
                 if count[i] == 0 and count[j] >= 1 and j in prereq and i in prereq[j]:
                     l.append(j + " selected but it's prereq " + i + " is not")
         return l
-
+ 
     def showPrereq(self):
         courseNameForPreq = self.ui.listWidget_1.currentItem(
         ).text().split('-')[0]
         global prereqWindow
         prereqWindow = PreReq(courseNameForPreq)
         prereqWindow.show()
-
-
+ 
+ 
 class PreReq:
     def __init__(self, courseNameForPreq):
-
+ 
         self.main_win = QMainWindow()
         self.ui = Ui_PreReq()
         self.ui.setupUi(self.main_win)
@@ -428,38 +404,38 @@ class PreReq:
             self.ui.listWidgetRight.addItems(isPrereqFor[courseNameForPreq])
         else:
             self.ui.listWidgetRight.addItems([""])
-
+ 
     def show(self):
         self.main_win.show()
-
+ 
 def getPendingBacklog():
     back_list = pd.read_excel(ACB_BACKLOG_LIST)
     pending = pd.read_excel(PENDING_COURSE_LIST, skiprows = 1)
-
+ 
     for i in range(len(pending)):
         if pending['Campus ID'][i] not in list(back_list['Campus ID']):
             pending.drop(i,inplace=True)
-
+ 
     pending.to_excel(PENDING_BACKLOG)  
-
+ 
 if __name__ == '__main__':
     pd.options.mode.chained_assignment = None
     app = QApplication(sys.argv)
     back_list = pd.read_excel(ACB_BACKLOG_LIST)
     if not path.exists(PENDING_BACKLOG):
-        getPendingBacklog()
-
+        getPendingBacklog() 
+ 
     merged = pd.read_excel(PENDING_BACKLOG)
-
+ 
     for i in range(len(back_list['NAME'])):
-        if '.' in back_list['NAME'][i]:
+        #print (back_list['NAME'][i])
+        #if math.isnan(back_list['NAME'][i]) :
+        if (back_list['NAME'][i] == back_list['NAME'][i]) and ('.' in back_list['NAME'][i]) :
             back_list['NAME'][i] = back_list['NAME'][i][:len(
                 back_list['NAME'][i]) - 1]
-    studentIDS = [
-        x + "-" + y for x,
-        y in zip(
-            back_list['NAME'],
-            back_list['Campus ID'])]
+    studentIDS = [str(x) + "-" + str(y) for x,y in zip(back_list['NAME'],back_list['Campus ID'])]
+    
+        
     for i in range(len(merged['Campus ID'])):
         if merged['Campus ID'][i] in courseDict:
             courseDict[merged['Campus ID'][i]].append(merged['Subject'][i].strip(
